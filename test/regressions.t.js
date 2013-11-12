@@ -1,6 +1,5 @@
-var markdown = require("../lib/markdown"),
+var Markdown = require("../src/markdown"),
     tap = require("tap"),
-    Markdown = markdown.Markdown,
     mk_block = Markdown.mk_block;
 
 
@@ -11,10 +10,10 @@ var markdown = require("../lib/markdown"),
 
 function test(name, cb) {
   tap.test( name, function(t) {
-    cb(t, new Markdown );
+    cb(t, new Markdown() );
     t.end();
   });
-};
+}
 
 test("split_block", function(t, md) {
   t.equivalent(
@@ -34,8 +33,10 @@ test("split_block", function(t, md) {
 });
 
 test("headers", function(t, md) {
+
+
   t.equivalent(
-    md.dialect.block.setextHeader( "h1\n===\n\n", [] ),
+    md.dialect.block.setextHeader.call( md,  "h1\n===\n\n", [] ),
     [ [ "header", { level: 1 }, "h1" ] ],
     "Atx and Setext style H1s should produce the same output" );
 
@@ -45,7 +46,7 @@ test("headers", function(t, md) {
     "Closing # optional on atxHeader");
 
   t.equivalent(
-    h2 = md.dialect.block.atxHeader.call( md, "## h2\n\n", [] ),
+    md.dialect.block.atxHeader.call( md, "## h2\n\n", [] ),
     [["header", {level: 2}, "h2"]],
     "Atx h2 has right level");
 
@@ -79,19 +80,19 @@ test("code", function(t, md) {
     "paragraph put back into next block");
 
   t.equivalent(
-    code.call( md, mk_block("    foo"), [mk_block("    bar"), ] ),
+    code.call( md, mk_block("    foo"), [mk_block("    bar") ] ),
     [["code_block", "foo\n\nbar" ]],
     "adjacent code blocks ");
 
   t.equivalent(
-    code.call( md, mk_block("    foo","\n  \n      \n"), [mk_block("    bar"), ] ),
+    code.call( md, mk_block("    foo","\n  \n      \n"), [mk_block("    bar") ] ),
     [["code_block", "foo\n\n\nbar" ]],
     "adjacent code blocks preserve correct number of empty lines");
 
 });
 
 test( "bulletlist", function(t, md) {
-  var bl = function() { return md.dialect.block.lists.apply(md, arguments) };
+  var bl = function() { return md.dialect.block.lists.apply(md, arguments); };
 
   t.equivalent(
     bl( mk_block("* foo\n* bar"), [] ),
@@ -238,11 +239,11 @@ test( "bulletlist", function(t, md) {
           "foo",
           [ "bulletlist",
             ["listitem", "bar"],
-            ["listitem", "baz"],
+            ["listitem", "baz"]
           ]
         ]
     ] ],
-    "Indenting Case V")
+    "Indenting Case V");
 
   /* Case VI: deep nesting
    |* one
@@ -270,7 +271,7 @@ test( "bulletlist", function(t, md) {
           ]
         ]
     ] ],
-    "deep nested lists VI")
+    "deep nested lists VI");
 
   /* Case VII: This one is just fruity!
    |   * foo
@@ -429,6 +430,7 @@ test( "inline_br", function(t, md) {
 
 test( "inline_escape", function(t, md) {
   t.equivalent( md.processInline("\\bar"), [ "\\bar" ], "invalid escape" );
+  t.equivalent( md.processInline("\\>"), [ ">" ], "escapes >" );
   t.equivalent( md.processInline("\\*foo*"), [ "*foo*" ], "escaped em" );
 });
 
@@ -476,6 +478,10 @@ test( "inline_img", function(t, md) {
   t.equivalent( md.processInline( "![alt] [id]" ),
                                   [ [ "img_ref", { ref: "id", alt: "alt", original: "![alt] [id]" } ] ],
                                   "ref img II" );
+
+  t.equivalent( md.processInline( "![contains parens](http://example.com/(parens).jpg)" ),
+                                  [ ["img", { href: "http://example.com/(parens).jpg", alt: "contains parens"} ] ],
+                                  "images with parentheses in the URL" );
 });
 
 test( "inline_link", function(t, md) {
@@ -485,6 +491,14 @@ test( "inline_link", function(t, md) {
                                   "inline link I" );
 
   t.equivalent( md.processInline( "[text](url 'title')" ),
+                                  [ [ "link", { href: "url", title: "title" }, "text" ] ],
+                                  "inline link II" );
+
+  t.equivalent( md.processInline( "[text](url  'title')" ),
+                                  [ [ "link", { href: "url", title: "title" }, "text" ] ],
+                                  "inline link II" );
+
+  t.equivalent( md.processInline( "[text](url\t\t'title')" ),
                                   [ [ "link", { href: "url", title: "title" }, "text" ] ],
                                   "inline link II" );
 
@@ -504,6 +518,7 @@ test( "inline_link", function(t, md) {
                                   [ [ "link_ref", { ref: "id", original: "[text] [id]" }, "text" ] ],
                                   "ref link II" );
 
+  /* jshint indent: false */
   t.equivalent( md.processInline( "[to put it another way][SECTION 1] or even [link this](#SECTION-1)" ),
                                   [
                                     [ "link_ref",
@@ -514,9 +529,10 @@ test( "inline_link", function(t, md) {
                                     [ "link",
                                       { href: "#SECTION-1" },
                                       "link this"
-                                    ],
+                                    ]
                                   ],
                                   "ref link II" );
+  /* jshint indent: 2 */
 });
 
 test( "inline_autolink", function(t, md) {
